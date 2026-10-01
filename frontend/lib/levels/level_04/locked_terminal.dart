@@ -68,6 +68,13 @@ class LockedTerminal extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 10),
+
+          // Tells the player what to do next.
+          Text(
+            'TOCA LAS CASILLAS PARA DESCIFRAR',
+            style: terminalText(size: 11, color: TerminalColors.cyan),
+          ),
         ],
       ),
     );
