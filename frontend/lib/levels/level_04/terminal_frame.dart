@@ -38,7 +38,13 @@ TextStyle terminalText({
 /// wrong password) can use this same frame and only change [child],
 /// which is what is drawn inside the screen.
 class TerminalFrame extends StatelessWidget {
-  const TerminalFrame({super.key, required this.child, this.onClose});
+  const TerminalFrame({
+    super.key,
+    required this.child,
+    this.onClose,
+    this.onHint,
+    this.keypad,
+  });
 
   /// Content of the screen.
   final Widget child;
@@ -46,12 +52,30 @@ class TerminalFrame extends StatelessWidget {
   /// Called when the player taps the X button. If null, no button.
   final VoidCallback? onClose;
 
+  /// Called when the player taps the ? button. If null, no button.
+  /// The button is outside the screen so it never covers the hints.
+  final VoidCallback? onHint;
+
+  /// Keys drawn to the right of the terminal. When it is given, the
+  /// terminal moves to the left to leave room. The game uses its own
+  /// keys because the phone keyboard covers half of the screen.
+  final Widget? keypad;
+
   // Same base size as the dark room. FittedBox scales it to any screen.
   static const double width = 640;
   static const double height = 360;
 
   @override
   Widget build(BuildContext context) {
+    final hasKeypad = keypad != null;
+    // Distances from the left and right edges of the scene.
+    final double bodyLeft = hasKeypad ? 12 : 72;
+    final double bodyRight = hasKeypad ? 268 : 72;
+    final double screenLeft = hasKeypad ? 24 : 122;
+    final double screenRight = hasKeypad ? 280 : 122;
+    final double slotLeft = hasKeypad ? 118 : 246;
+    final double slotRight = hasKeypad ? 374 : 246;
+
     return ColoredBox(
       color: const Color(0xFF050D1C),
       child: Center(
@@ -69,8 +93,8 @@ class TerminalFrame extends StatelessWidget {
 
                 // Terminal body
                 Positioned(
-                  left: 72,
-                  right: 72,
+                  left: bodyLeft,
+                  right: bodyRight,
                   top: 22,
                   bottom: 0,
                   child: Container(
@@ -84,13 +108,17 @@ class TerminalFrame extends StatelessWidget {
                 ),
 
                 // Screws
-                const Positioned(left: 84, top: 32, child: _Screw()),
-                const Positioned(right: 84, top: 32, child: _Screw()),
+                Positioned(left: bodyLeft + 12, top: 32, child: const _Screw()),
+                Positioned(
+                  right: bodyRight + 12,
+                  top: 32,
+                  child: const _Screw(),
+                ),
 
                 // Title
                 Positioned(
-                  left: 0,
-                  right: 0,
+                  left: bodyLeft,
+                  right: bodyRight,
                   top: 36,
                   child: Text(
                     'TERMINAL',
@@ -104,13 +132,15 @@ class TerminalFrame extends StatelessWidget {
                 ),
 
                 // Side vents
-                const Positioned(left: 86, top: 172, child: _Vent()),
-                const Positioned(right: 86, top: 172, child: _Vent()),
+                if (!hasKeypad) ...const [
+                  Positioned(left: 86, top: 172, child: _Vent()),
+                  Positioned(right: 86, top: 172, child: _Vent()),
+                ],
 
                 // Screen
                 Positioned(
-                  left: 122,
-                  right: 122,
+                  left: screenLeft,
+                  right: screenRight,
                   top: 72,
                   bottom: 62,
                   child: Container(
@@ -124,8 +154,8 @@ class TerminalFrame extends StatelessWidget {
 
                 // Slot under the screen
                 Positioned(
-                  left: 246,
-                  right: 246,
+                  left: slotLeft,
+                  right: slotRight,
                   bottom: 18,
                   child: Container(
                     height: 16,
@@ -136,38 +166,56 @@ class TerminalFrame extends StatelessWidget {
                   ),
                 ),
 
+                // Keys on the right
+                if (hasKeypad) Positioned(left: 384, top: 66, child: keypad!),
+
+                // Hint button, to the left of the close button
+                if (onHint != null)
+                  Positioned(
+                    right: 64,
+                    top: 12,
+                    child: _CornerButton(label: '?', onTap: onHint!),
+                  ),
+
                 // Close button
                 if (onClose != null)
                   Positioned(
                     right: 12,
                     top: 12,
-                    child: GestureDetector(
-                      onTap: onClose,
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: TerminalColors.bodyDark,
-                          border: Border.all(
-                            color: TerminalColors.blue,
-                            width: 2,
-                          ),
-                        ),
-                        child: Text(
-                          'X',
-                          style: terminalText(
-                            size: 18,
-                            color: TerminalColors.blue,
-                            spacing: 0,
-                          ),
-                        ),
-                      ),
-                    ),
+                    child: _CornerButton(label: 'X', onTap: onClose!),
                   ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Square button of the top right corner (? and X).
+class _CornerButton extends StatelessWidget {
+  const _CornerButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: TerminalColors.bodyDark,
+          border: Border.all(color: TerminalColors.blue, width: 2),
+        ),
+        child: Text(
+          label,
+          style: terminalText(size: 18, color: TerminalColors.blue, spacing: 0),
         ),
       ),
     );

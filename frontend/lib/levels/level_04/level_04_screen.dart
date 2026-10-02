@@ -40,14 +40,18 @@ class _Level04ScreenState extends State<Level04Screen> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+    // Full screen: hides the status bar and the navigation buttons.
+    // They come back for a moment if the player swipes from the edge.
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _startTimer();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    // Give the orientation back to the rest of the app.
+    // Give the orientation and the system bars back to the rest of the app.
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
