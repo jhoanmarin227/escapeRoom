@@ -3,13 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'access_granted.dart';
+import 'binary_message.dart';
+import 'caesar_cipher.dart';
 import 'dark_room.dart';
+import 'final_password.dart';
 import 'locked_terminal.dart';
 
 /// Entry screen of Level 4 - La Terminal Cifrada.
 ///
-/// It starts in the dark room (view 1). When the player taps the
-/// terminal, the locked terminal (view 2) opens on top of the room.
+/// Order of the level:
+/// dark room -> locked terminal -> binary message -> Caesar cipher
+/// -> final password -> access granted.
+/// The terminal views open on top of the room. The X button goes back
+/// to the room and the player keeps the puzzle where he was.
 /// The level has a time limit. Wrong answers do not take time away.
 class Level04Screen extends StatefulWidget {
   const Level04Screen({super.key});
@@ -23,6 +30,12 @@ class Level04Screen extends StatefulWidget {
 
 class _Level04ScreenState extends State<Level04Screen> {
   bool _terminalOpen = false;
+
+  // 0 = locked terminal, 1 = binary, 2 = Caesar, 3 = final password.
+  int _puzzle = 0;
+
+  // True when the password is right: the room lights up.
+  bool _granted = false;
 
   int _secondsLeft = Level04Screen.timeLimit;
   Timer? _timer;
@@ -74,16 +87,45 @@ class _Level04ScreenState extends State<Level04Screen> {
     setState(() {
       _secondsLeft = Level04Screen.timeLimit;
       _terminalOpen = false;
+      _puzzle = 0;
+      _granted = false;
       _attempt++;
     });
     _startTimer();
   }
 
-  void _startPuzzles() {
-    // The binary message view (puzzle 1) will be opened from here.
+  void _closeTerminal() => setState(() => _terminalOpen = false);
+
+  void _nextPuzzle() => setState(() => _puzzle++);
+
+  void _grantAccess() {
+    // The timer stops when the level is solved.
+    _timer?.cancel();
+    setState(() {
+      _granted = true;
+      _terminalOpen = false;
+    });
+  }
+
+  void _goToLevel5() {
+    // Level 5 will be opened from here.
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Puzzle 1: mensaje binario (pendiente)')),
+      const SnackBar(content: Text('Nivel 4 completado. Sigue el Nivel 5.')),
     );
+  }
+
+  /// The terminal view of the puzzle the player is on.
+  Widget _terminalView() {
+    switch (_puzzle) {
+      case 0:
+        return LockedTerminal(onClose: _closeTerminal, onStart: _nextPuzzle);
+      case 1:
+        return BinaryMessage(onClose: _closeTerminal, onSolved: _nextPuzzle);
+      case 2:
+        return CaesarCipher(onClose: _closeTerminal, onSolved: _nextPuzzle);
+      default:
+        return FinalPassword(onClose: _closeTerminal, onSolved: _grantAccess);
+    }
   }
 
   /// Time left as mm:ss, for example 04:59.
@@ -106,16 +148,15 @@ class _Level04ScreenState extends State<Level04Screen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // The room stays behind so Luna keeps her place.
-            DarkRoom(
-              key: ValueKey(_attempt),
-              onTerminalTap: () => setState(() => _terminalOpen = true),
-            ),
-            if (_terminalOpen)
-              LockedTerminal(
-                onClose: () => setState(() => _terminalOpen = false),
-                onStart: _startPuzzles,
+            if (_granted)
+              AccessGranted(onContinue: _goToLevel5)
+            else
+              // The room stays behind so Luna keeps her place.
+              DarkRoom(
+                key: ValueKey(_attempt),
+                onTerminalTap: () => setState(() => _terminalOpen = true),
               ),
+            if (_terminalOpen && !_granted) _terminalView(),
 
             // Level timer (top left)
             Positioned(
@@ -147,7 +188,7 @@ class _Level04ScreenState extends State<Level04Screen> {
             ),
 
             // Time is over
-            if (_timeUp) _TimeUp(onRetry: _retry),
+            if (_timeUp && !_granted) _TimeUp(onRetry: _retry),
           ],
         ),
       ),
